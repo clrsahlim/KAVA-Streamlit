@@ -488,15 +488,15 @@ st.markdown(f"""
     Click a category to view the most common education backgrounds</p>
 """, unsafe_allow_html=True)
 
+switcher_count = edu_df[edu_df['relevance'] == 'Career Switcher'].groupby('category').size()
+total_per_cat  = edu_df.groupby('category').size()
 top5 = (
-    edu_df[edu_df['relevance'] == 'Career Switcher']
-    .groupby('category').size().sort_values(ascending=False).head(5).reset_index()
+    (switcher_count / total_per_cat * 100)
+    .round(1).sort_values(ascending=False).head(5).reset_index()
 )
-top5.columns = ['Category', 'Career Switcher Count']
-total_per_cat = edu_df.groupby('category').size().rename('Total')
-top5['Total'] = top5['Category'].map(total_per_cat)
-top5['% of Category'] = (top5['Career Switcher Count'] / top5['Total'] * 100).round(1).astype(str) + '%'
-top5 = top5.drop(columns='Total')
+top5.columns = ['Category', 'Switcher %']
+top5['Career Switcher Count'] = top5['Category'].map(switcher_count).fillna(0).astype(int)
+top5['% of Category'] = top5['Switcher %'].astype(str) + '%'
 
 cs_df = edu_df[edu_df['relevance'] == 'Career Switcher'].copy()
 cs_df['edu_bg'] = cs_df['education'].apply(extract_edu_background)
@@ -505,8 +505,8 @@ medals = ['1.', '2.', '3.', '4.', '5.']
 
 for i, row in top5.iterrows():
     cat   = row['Category']
-    label = (f"{medals[i]} **{cat}** — {row['Career Switcher Count']:,} career switchers "
-             f"({row['% of Category']} of this category)")
+    label = (f"{medals[i]} **{cat}** — {row['% of Category']} of candidates are career switchers "
+            f"({row['Career Switcher Count']:,} people)")
     with st.expander(label):
         cat_cs  = cs_df[cs_df['category'] == cat]
         top_edu = (
